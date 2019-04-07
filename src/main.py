@@ -3,13 +3,15 @@ import random
 import time
 
 FIRST_GEN_CHANCE = 0.2
-PIXEL_SIZE = 4
+PIXEL_SIZE = 2**4
 POPULATION_SIZE = int (1024 / PIXEL_SIZE)
 MUTATION_CHANCE = 1 / 100000
-TIMER = 0.07
+TIMER = 0.0
 
 WIDTH = PIXEL_SIZE * POPULATION_SIZE
 HEIGHT = PIXEL_SIZE * POPULATION_SIZE
+
+STATE_RULES = {0: 0, 1: 0, 2: None, 3: 1, 4: 0, 5: 0, 6: 0, 7: 0, 8: 00}
 
 def draw_canvas(window):
     canvas = Canvas(window, width=WIDTH, height=HEIGHT, background ="white")
@@ -42,20 +44,13 @@ def draw_population(canvas, population, generation = None, mutation_count = None
         text += "Mutation last gen: " + str(mutation_last_step) + "\n"
 
     text += "Population: " + str(count)
-    canvas.create_text(30, 40, anchor=W, font="Purisa",
-                           text=text)
+    canvas.create_text(30, 40, anchor=W, font="Purisa", text=text)
     return
 
 
 def create_starting_population():
-    population = list()
-    for x in range(0, int(WIDTH / PIXEL_SIZE)):
-        line = list()
-        for y in range(0, int(HEIGHT / PIXEL_SIZE)):
-            line.append(1 if random.random() < FIRST_GEN_CHANCE else 0)
-        population.append(line)
+    return [[1 if random.random() < FIRST_GEN_CHANCE else 0 for _ in range(0, POPULATION_SIZE)] for _ in range(0, POPULATION_SIZE)]
 
-    return population
 
 
 def if_dot_exists(x,y):
@@ -65,45 +60,54 @@ def if_dot_exists(x,y):
     return False
 
 
-def count_neighbours(population, x, y):
-    count = 0
+# def count_neighbours(population, x, y):
+#     count = 0
+#
+#     for x_dif in [-1, 0, 1]:
+#         for y_dif in [-1, 0, 1]:
+#             if x_dif == 0 and y_dif == 0:
+#                 continue
+#             elif if_dot_exists(x + x_dif, y + y_dif) and population[x + x_dif][y + y_dif] > 0:
+#                 count += 1
+#     return count
 
-    for x_dif in [-1, 0, 1]:
-        for y_dif in [-1, 0, 1]:
-            if x_dif == 0 and y_dif == 0:
-                continue
-            elif if_dot_exists(x + x_dif, y + y_dif) and population[x + x_dif][y + y_dif] > 0:
-                count += 1
-    return count
+
+def pre_count_neighbours(population):
+    neighbours = [[0 for _ in range(0, POPULATION_SIZE)] for _ in range(0, POPULATION_SIZE)]
+
+    for x, x_array in enumerate(population):
+        for y, state in enumerate(x_array):
+            if state > 0:
+                for x_dif in [-1, 0, 1]:
+                    for y_dif in [-1, 0, 1]:
+                        if x_dif == 0 and y_dif == 0:
+                            continue
+                        if if_dot_exists(x + x_dif, y + y_dif):
+                            neighbours[x + x_dif][y + y_dif] += 1
+    return neighbours
 
 def next_generation(population):
     new_population = list()
-
+    neighbours = pre_count_neighbours(population)
     for x, x_array in enumerate(population):
         line = list()
         for y, y_array in enumerate(x_array):
-
-            state = population[x][y]
-            neighbours = count_neighbours(population, x, y)
+            state = y
+            neighbours_count = neighbours[x][y]
 
             if state > 1:
                 state = 1
             if state < 0:
                 state = 0
 
-            if MUTATION_CHANCE > 0 and random.random() < MUTATION_CHANCE and neighbours > 0:
+            if MUTATION_CHANCE > 0 and random.random() < MUTATION_CHANCE and neighbours_count > 0:
                 if population[x][y]:
                     state = -1
                 else:
                     state = 2
                 line.append(state)
                 continue
-
-            if neighbours > 3 or neighbours < 2:
-                state = 0
-
-            if neighbours == 3:
-                state = 1
+            state = state if STATE_RULES[neighbours_count] is None else STATE_RULES[neighbours_count]
 
             line.append(state)
         new_population.append(line)
