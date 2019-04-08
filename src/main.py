@@ -2,16 +2,17 @@ from tkinter import *
 import random
 import time
 
-FIRST_GEN_CHANCE = 0.05
-PIXEL_SIZE = 2**4
+FIRST_GEN_CHANCE = 0.2
+PIXEL_SIZE = 2**3
 POPULATION_SIZE = int (512 / PIXEL_SIZE)
 MUTATION_CHANCE = 1 / 100000
-TIMER = 0.3
+TIMER = 0.2
 
 WIDTH = PIXEL_SIZE * POPULATION_SIZE
 HEIGHT = PIXEL_SIZE * POPULATION_SIZE
 
-STATE_RULES = {0: 0, 1: 0, 2: None, 3: 1, 4: 0, 5: 0, 6: 0, 7: 0, 8: 00}
+STATE_RULES = {0: 0, 1: 0, 3: 1, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0}
+
 
 def draw_canvas(window):
     canvas = Canvas(window, width=WIDTH, height=HEIGHT, background ="white")
@@ -72,18 +73,25 @@ def if_dot_exists(x,y):
 #     return count
 
 
+def neighbours_coords(x,y):
+    neighbours_coords = list()
+    for x_dif in [-1, 0, 1]:
+        for y_dif in [-1, 0, 1]:
+            if x_dif == 0 and y_dif == 0:
+                continue
+            if if_dot_exists(x + x_dif, y + y_dif):
+                neighbours_coords.append([x + x_dif,y + y_dif])
+    return neighbours_coords
+
 def pre_count_neighbours(population):
     neighbours = [[0 for _ in range(0, POPULATION_SIZE)] for _ in range(0, POPULATION_SIZE)]
 
     for x, x_array in enumerate(population):
         for y, state in enumerate(x_array):
-            if state > 0:
-                for x_dif in [-1, 0, 1]:
-                    for y_dif in [-1, 0, 1]:
-                        if x_dif == 0 and y_dif == 0:
-                            continue
-                        if if_dot_exists(x + x_dif, y + y_dif):
-                            neighbours[x + x_dif][y + y_dif] += 1
+            if state < 1:
+                continue
+            for [n_x, n_y] in neighbours_coords(x, y):
+                neighbours[n_x][n_y] += 1
     return neighbours
 
 def next_generation(population):
@@ -92,7 +100,7 @@ def next_generation(population):
     for x, x_array in enumerate(population):
         line = list()
         for y, y_array in enumerate(x_array):
-            state = y
+            state = y_array
             neighbours_count = neighbours[x][y]
 
             if state > 1:
@@ -107,7 +115,8 @@ def next_generation(population):
                     state = 2
                 line.append(state)
                 continue
-            state = state if STATE_RULES[neighbours_count] is None else STATE_RULES[neighbours_count]
+
+            state = state if neighbours_count not in STATE_RULES.keys() else STATE_RULES[neighbours_count]
 
             line.append(state)
         new_population.append(line)
@@ -122,6 +131,14 @@ def count_mutations(population):
             if y < 0 or y > 1:
                 count += 1
     return count
+
+def stable_population_example():
+    population = [[0 for _ in range(0, POPULATION_SIZE)] for _ in range(0, POPULATION_SIZE)]
+    population[20][20] = 1
+    population[20][21] = 1
+    population[20][22] = 1
+    return population
+
 
 def conway():
     main_window = Tk()
