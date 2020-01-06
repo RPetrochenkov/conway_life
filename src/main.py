@@ -1,12 +1,13 @@
 from tkinter import *
 import random
 import time
+import copy
 
-FIRST_GEN_CHANCE = 0.2
+FIRST_GEN_CHANCE = 0.3
 PIXEL_SIZE = 2**3
 POPULATION_SIZE = int (512 / PIXEL_SIZE)
 MUTATION_CHANCE = 1 / 100000
-TIMER = 0.2
+TIMER = None
 
 WIDTH = PIXEL_SIZE * POPULATION_SIZE
 HEIGHT = PIXEL_SIZE * POPULATION_SIZE
@@ -20,21 +21,38 @@ def draw_canvas(window):
     return canvas
 
 
-def draw_population(canvas, population, generation = None, mutation_count = None, mutation_last_step = None):
-    canvas.delete("all")
+def init_cells_on_canvas(canvas):
+    all_rectangles = list()
+    for x in range(POPULATION_SIZE):
+        arr = list()
+        for y in range(POPULATION_SIZE):
+            rect = canvas.create_rectangle(x * PIXEL_SIZE, y * PIXEL_SIZE,
+                                           (x + 1) * PIXEL_SIZE, (y + 1) * PIXEL_SIZE,
+                                           fill="white", outline="white")
+            arr.append(rect)
+        all_rectangles.append(arr)
+    label = canvas.create_text(30, 40, anchor=W, font="Purisa", text="", fill="red")
+    return [all_rectangles, label]
+
+
+def draw_population(canvas, rectangles, label, population, old_generation, generation, mutation_count = None, mutation_last_step = None):
     count = 0
     for x, x_array in enumerate(population):
         for y, dot_state in enumerate(x_array):
-            color = "black"
-            if dot_state == 0:
-                continue
             if dot_state > 0:
                 count += 1
+
+            if old_generation is not None and old_generation[x][y] == dot_state:
+                continue
+
+            color = "black"
+            if dot_state == 0:
+                color = "white"
             if dot_state == 2:
                 color = "orange"
             if dot_state < 0:
                 color = "grey"
-            canvas.create_rectangle(x * PIXEL_SIZE, y * PIXEL_SIZE, (x + 1) * PIXEL_SIZE, (y + 1) * PIXEL_SIZE, fill=color)
+            canvas.itemconfig(rectangles[x][y], fill=color)
 
     text = ""
     if generation:
@@ -44,8 +62,9 @@ def draw_population(canvas, population, generation = None, mutation_count = None
     if mutation_last_step is not None:
         text += "Mutation last gen: " + str(mutation_last_step) + "\n"
 
+
     text += "Population: " + str(count)
-    canvas.create_text(30, 40, anchor=W, font="Purisa", text=text)
+    canvas.itemconfig(label, text=text)
     return
 
 
@@ -144,19 +163,23 @@ def conway():
     main_window = Tk()
     canvas = draw_canvas(main_window)
     population = create_starting_population()
+    old_generation = None
 
     generation_counter = 0
     mutations_counter = 0
+    canvas_rectangles, label = init_cells_on_canvas(canvas)
     while True:
         generation_counter += 1
         this_step_mutations = count_mutations(population)
-        draw_population(canvas, population, generation=generation_counter,
+        draw_population(canvas, canvas_rectangles, label, population, old_generation, generation=generation_counter,
                         mutation_last_step=this_step_mutations, mutation_count=mutations_counter)
         mutations_counter += this_step_mutations
         main_window.update()
+        old_generation = copy.copy(population)
         population = next_generation(population)
 
-        time.sleep(TIMER)
+        if TIMER is not None:
+            time.sleep(TIMER)
 
 
 def main():
